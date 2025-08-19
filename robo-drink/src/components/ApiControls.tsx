@@ -1,84 +1,35 @@
 "use client";
 
 import React, { useState } from "react";
+import type { RobotState, RobotActions } from "@/hooks/useRobotState";
 
 type ApiControlsProps = {
   className?: string;
+  robotState: RobotState;
+  robotActions: RobotActions;
 };
 
-export default function ApiControls({ className }: ApiControlsProps) {
-  const [isLoading, setIsLoading] = useState<string | null>(null);
-  const [fireableState, setFireableState] = useState<boolean | null>(null);
-  const [trackingMode, setTrackingMode] = useState<string>("off");
-  const [solenoidState, setSolenoidState] = useState<boolean | null>(null);
+export default function ApiControls({ className, robotState, robotActions }: ApiControlsProps) {
+  const { fireableState, trackingMode, solenoidState, releaseTime, isLoading } = robotState;
+  const { toggleFireable, setTrackMode, toggleSolenoid, reset, setReleaseTimeValue } = robotActions;
+  
+  // Local state for release time to provide immediate UI feedback
+  const [localReleaseTime, setLocalReleaseTime] = useState(releaseTime);
+  
+  // Update local state when prop changes (from polling)
+  React.useEffect(() => {
+    setLocalReleaseTime(releaseTime);
+  }, [releaseTime]);
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:80";
 
-  const callApi = async (endpoint: string, params?: { mode?: string }) => {
-    setIsLoading(endpoint);
-    try {
-      let url = `${API_BASE_URL}${endpoint}`;
-      
-      // Add query parameters for POST endpoints
-      if (params?.mode) {
-        url += `?mode=${encodeURIComponent(params.mode)}`;
-      }
-
-      const options: RequestInit = {
-        method: params ? "POST" : "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      };
-
-      const response = await fetch(url, options);
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || "API call failed");
-      }
-      
-      return result;
-    } catch (error) {
-      console.error(`API call to ${endpoint} failed:`, error);
-      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setIsLoading(null);
-    }
-  };
-
-  const toggleFireable = async (mode: "on" | "off") => {
-    await callApi("/toggle_fireable", { mode });
-    setFireableState(mode === "on");
-  };
-
-  const setTrackMode = async (mode: "face" | "hotdog" | "off") => {
-    await callApi("/track_mode", { mode });
-    setTrackingMode(mode);
-  };
-
-  const toggleSolenoid = async (mode: "on" | "off") => {
-    await callApi("/solenoid", { mode });
-    setSolenoidState(mode === "on");
-  };
-
-  const reset = async () => {
-    await callApi("/reset");
-    // Reset local state
-    setFireableState(null);
-    setTrackingMode("off");
-    setSolenoidState(null);
-  };
-
-  const buttonBaseClass = "px-3 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
-  const primaryButtonClass = `${buttonBaseClass} bg-blue-600 hover:bg-blue-700 text-white border-blue-600`;
-  const secondaryButtonClass = `${buttonBaseClass} bg-white hover:bg-gray-50 text-gray-700 border-gray-300`;
-  const dangerButtonClass = `${buttonBaseClass} bg-red-600 hover:bg-red-700 text-white border-red-600`;
-  const successButtonClass = `${buttonBaseClass} bg-green-600 hover:bg-green-700 text-white border-green-600`;
 
   return (
     <div className={`bg-white rounded-2xl border border-black/10 shadow-lg p-3 max-w-xs backdrop-blur-sm bg-white/95 ${className}`}>
-      <h3 className="text-sm font-semibold mb-3 text-center">Robot Controls</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold">Robot Controls</h3>
+        <div className={`w-2 h-2 rounded-full bg-green-500`} 
+             title="Live sync enabled" />
+      </div>
       
       {/* Fireable Toggle */}
       <div className="mb-3">
@@ -175,6 +126,52 @@ export default function ApiControls({ className }: ApiControlsProps) {
           >
             OFF
           </button>
+        </div>
+      </div>
+
+      {/* Release Time Control */}
+      <div className="mb-3">
+        <label className="block text-xs font-medium text-gray-700 mb-1">
+          Release Time: {localReleaseTime}s
+        </label>
+        <div className="space-y-1">
+          <input
+            type="range"
+            min="0.1"
+            max="10.0"
+            step="0.1"
+            value={localReleaseTime}
+            onChange={(e) => {
+              const newTime = parseFloat(e.target.value);
+              setLocalReleaseTime(newTime);
+              setReleaseTimeValue(newTime);
+            }}
+            disabled={isLoading === "/set_release_time"}
+            className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:opacity-50"
+          />
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>0.1s</span>
+            <span>10s</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1">
+            {[0.5, 1.0, 2.0, 5.0].map((time) => (
+              <button
+                key={time}
+                onClick={() => {
+                  setLocalReleaseTime(time);
+                  setReleaseTimeValue(time);
+                }}
+                disabled={isLoading === "/set_release_time"}
+                className={`px-2 py-1 text-xs font-medium rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  Math.abs(localReleaseTime - time) < 0.05
+                    ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                    : "bg-white hover:bg-gray-50 text-gray-700 border-gray-300"
+                }`}
+              >
+                {time}s
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

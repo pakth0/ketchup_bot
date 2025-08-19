@@ -139,20 +139,41 @@ class PanTiltTurretController:
         '''fire ketchup using serial_controller in a separate thread'''
         threading.Thread(target=self._fire_worker, args=(release_time,), daemon=True).start()
 
-    def reset(self):
-        '''reset position of pan and tilt motors to 0,0'''
-        pan_tacho = self.pan_motor.get_tacho().tacho_count
-        tilt_tacho = self.tilt_motor.get_tacho().tacho_count
-        factor_y = 1
-        factor_x = 1
-        if pan_tacho < 0:
-            pan_tacho = -pan_tacho
-            factor_x = -1
-        if tilt_tacho < 0:
-            factor_y = -1
-            tilt_tacho = -tilt_tacho
+    def reset(self, target_pan=0, target_tilt=0):
+        '''reset position of pan and tilt motors to target positions (default 0,0)'''
+        current_pan = self.pan_motor.get_tacho().tacho_count
+        current_tilt = self.tilt_motor.get_tacho().tacho_count
+        
+        # Calculate movement needed to reach target positions
+        pan_movement = current_pan - target_pan
+        tilt_movement = current_tilt - target_tilt
+        
+        print(f"Current position - Pan: {current_pan}, Tilt: {current_tilt}")
+        print(f"Target position - Pan: {target_pan}, Tilt: {target_tilt}")
+        print(f"Movement needed - Pan: {pan_movement}, Tilt: {tilt_movement}")
+        
+        # Determine movement direction and power
+        pan_power = 0
+        tilt_power = 0
+        pan_angle = abs(pan_movement)
+        tilt_angle = abs(tilt_movement)
+        
+        if pan_movement > 0:
+            pan_power = -50  # Move counter-clockwise to reduce position
+        elif pan_movement < 0:
+            pan_power = 50   # Move clockwise to increase position
+            
+        if tilt_movement > 0:
+            tilt_power = -50  # Move up to reduce position
+        elif tilt_movement < 0:
+            tilt_power = 50   # Move down to increase position
 
-        self.rotate_both(-50*factor_x, pan_tacho, -50*factor_y, tilt_tacho)
+        # Only move if there's actual movement needed
+        if pan_angle > 0 or tilt_angle > 0:
+            self.rotate_both(pan_power, pan_angle, tilt_power, tilt_angle)
+            print(f"Reset complete - moved to target position")
+        else:
+            print("Already at target position - no movement needed")
             
     def destroy(self):
         self.MotCont.stop()

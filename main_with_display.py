@@ -20,6 +20,8 @@ import cv2
 import time
 import asyncio
 from contextlib import asynccontextmanager
+import signal
+import sys
 
 # Global variables
 brain = None
@@ -82,6 +84,38 @@ async def home():
         "timestamp": datetime.datetime.now().isoformat(),
     }
 
+@app.get("/status/fireable")
+def get_fireable_status():
+    """Get current fireable state"""
+    if not brain:
+        return {"error": "Brain not initialized"}
+    return {
+        "fireable": brain.fireable,
+        "timestamp": datetime.datetime.now().isoformat()
+    }
+
+@app.get("/status/tracking")
+def get_tracking_status():
+    """Get current tracking mode"""
+    if not brain:
+        return {"error": "Brain not initialized"}
+    return {
+        "mode": brain.current_mode,
+        "timestamp": datetime.datetime.now().isoformat()
+    }
+
+@app.get("/status/all")
+def get_all_status():
+    """Get complete system status for frontend sync"""
+    if not brain:
+        return {"error": "Brain not initialized"}
+    return {
+        "fireable": brain.fireable,
+        "tracking_mode": brain.current_mode,
+        "release_time": brain.release_time,
+        "timestamp": datetime.datetime.now().isoformat()
+    }
+
 @app.post("/track_mode")
 def track_mode(mode: str):
     if not brain:
@@ -110,6 +144,28 @@ def toggle_fireable(mode: str):
         return {"error": "Invalid mode"}
     return {"status": f"Fireable: {brain.fireable}"}
 
+@app.get("/status/release_time")
+def get_release_time():
+    """Get current release time"""
+    if not brain:
+        return {"error": "Brain not initialized"}
+    return {
+        "release_time": brain.release_time,
+        "timestamp": datetime.datetime.now().isoformat()
+    }
+
+@app.post("/set_release_time")
+def set_release_time(release_time: float):
+    """Set the fire release time in seconds"""
+    if not brain:
+        return {"error": "Brain not initialized"}
+        
+    if release_time < 0.1 or release_time > 10.0:
+        return {"error": "Release time must be between 0.1 and 10.0 seconds"}
+    
+    brain.release_time = release_time
+    return {"status": f"Release time set to: {brain.release_time}s"}
+
 @app.post("/solenoid")
 def solenoid(mode: str):
     if not brain:
@@ -131,10 +187,30 @@ def reset():
     if not brain:
         return {"error": "Brain not initialized"}
     try:
-        brain.controller.reset()
+        brain.reset_to_home()
         return {"status": "Reset completed"}
     except Exception as e:
         return {"error": f"Reset failed: {e}"}
+
+@app.post("/set_release_time")
+def set_release_time(release_time: float):
+    """Set the solenoid release time"""
+    if not brain:
+        return {"error": "Brain not initialized"}
+    
+    try:
+        # Validate release time range
+        if release_time < 0.1 or release_time > 10.0:
+            return {"error": "Release time must be between 0.1 and 10.0 seconds"}
+        
+        # Set the release time on the brain's solenoid controller
+        if hasattr(brain, 'controller') and hasattr(brain.controller, 'solenoid_controller'):
+            brain.controller.solenoid_controller.release_time = release_time
+            return {"status": f"Release time set to {release_time}s", "release_time": release_time}
+        else:
+            return {"error": "Solenoid controller not available"}
+    except Exception as e:
+        return {"error": f"Failed to set release time: {e}"}
 
 def get_host_ip():
     """Get the local IP address"""
@@ -147,9 +223,27 @@ def get_host_ip():
     except:
         return "localhost"
 
+def signal_handler(signum, frame):
+    """Handle signals gracefully"""
+    global display_running
+    print(f"\n🛑 Received signal {signum}, shutting down gracefully...")
+    display_running = False
+    cv2.destroyAllWindows()
+    if brain:
+        brain.stop()
+    sys.exit(0)
+
 def run_display_with_server():
     """Run the camera display in the main thread alongside the server"""
     global display_running
+    
+    # Set up signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    try:
+        signal.signal(signal.SIGTRAP, signal_handler)  # Handle trace trap
+    except AttributeError:
+        pass  # SIGTRAP might not be available on all systems
     
     print("📺 Starting camera display in main thread...")
     
@@ -196,7 +290,8 @@ def run_display_with_server():
                 # Read from camera
                 ret, frame = brain.cap.read()
                 if not ret:
-                    time.sleep(0.01)
+                    print("⚠️  Failed to read camera frame")
+                    time.sleep(0.1)
                     continue
                 
                 # Draw crosshair at center
@@ -237,7 +332,7 @@ def run_display_with_server():
                 
                 elif brain.current_mode == 'hotdog':
                     try:
-                        hotdog_detection = brain.hotdog_recognizer.get_biggest_hotdog_coordinates(frame)
+                        hotdog_detection = brain.hotdog_recognizer.find_biggest_hotdog(frame)
                         if hotdog_detection is not None:
                             x, y, w, h = hotdog_detection
                             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 3)
@@ -247,8 +342,9 @@ def run_display_with_server():
                             cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
                             cv2.putText(frame, f"({center_x}, {center_y})", (center_x + 10, center_y), 
                                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"❌ Hotdog detection error: {e}")
+                        cv2.putText(frame, "HOTDOG ERROR", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
                 
                 # Show status
                 mode_text = f"Mode: {brain.current_mode or 'IDLE'}"

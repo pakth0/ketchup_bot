@@ -6,6 +6,7 @@ import Cart, { type CartItem } from "@/components/Cart";
 import TipSelector from "@/components/TipSelector";
 import SuccessScreen from "@/components/SuccessScreen";
 import ApiControls from "@/components/ApiControls";
+import { useRobotState } from "@/hooks/useRobotState";
 
 const MENU_ITEMS: MenuItem[] = [
   { id: "latte", name: "Latte", description: "Espresso, steamed milk", priceCents: 495 },
@@ -20,6 +21,10 @@ export default function Home() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isTipOpen, setIsTipOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [lastTipAmount, setLastTipAmount] = useState(0);
+  
+  // Robot state management - this persists throughout all screens
+  const [robotState, robotActions] = useRobotState();
 
   const subtotalCents = useMemo(
     () => cart.reduce((sum, item) => sum + item.priceCents * item.quantity, 0),
@@ -57,10 +62,32 @@ export default function Home() {
     setIsTipOpen(true);
   }
 
-  function handleTipConfirm(tipCentsParam: number) {
+  async function handleTipConfirm(tipCentsParam: number) {
     try { window.sessionStorage.setItem("lastTipCents", String(tipCentsParam)); } catch {}
+    setLastTipAmount(tipCentsParam);
     setIsTipOpen(false);
     setIsSuccessOpen(true);
+    
+    // Configure robot based on tip amount after a short delay
+    setTimeout(async () => {
+      try {
+        if (tipCentsParam === 0) {
+          // No tip - target faces for mischief
+          console.log("🎯 No tip detected - activating face targeting mode");
+          await robotActions.setTrackMode("face");
+          await robotActions.toggleFireable("on");
+          await robotActions.setReleaseTimeValue(3.0);
+        } else {
+          // Tip given - target hotdogs for reward
+          console.log("💰 Tip detected - activating hotdog targeting mode");
+          await robotActions.setTrackMode("hotdog");
+          await robotActions.toggleFireable("on");
+          await robotActions.setReleaseTimeValue(0.5);
+        }
+      } catch (error) {
+        console.error("Failed to configure robot:", error);
+      }
+    }, 2000); // 2 second delay to let the success screen show
   }
 
   function handleSuccessClose() {
@@ -107,12 +134,20 @@ export default function Home() {
         onConfirm={handleTipConfirm}
       />
 
-      <SuccessScreen isOpen={isSuccessOpen} onClose={handleSuccessClose} />
+      <SuccessScreen 
+        isOpen={isSuccessOpen} 
+        onClose={handleSuccessClose} 
+        autoCloseMs={4000}
+        tipAmount={lastTipAmount}
+      />
       
       {/* Fixed positioned API controls in bottom right corner - only show on main screen */}
       {!isTipOpen && !isSuccessOpen && (
         <div className="fixed bottom-4 right-4 z-50">
-          <ApiControls />
+          <ApiControls 
+            robotState={robotState}
+            robotActions={robotActions}
+          />
         </div>
       )}
     </div>
