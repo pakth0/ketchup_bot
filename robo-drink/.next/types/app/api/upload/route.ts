@@ -1,4 +1,4 @@
-// File: /Users/noorali/dev/robo-drinks/src/app/api/upload/route.ts
+// File: /Users/noorali/dev/ketchup_bot/robo-drink/src/app/api/upload/route.ts
 import * as entry from '../../../../../src/app/api/upload/route.js'
 import type { NextRequest } from 'next/server.js'
 

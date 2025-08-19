@@ -94,14 +94,14 @@ def track_mode(mode: str):
         return {"error": "Invalid mode"}
     return {}
 
-@app.get("/solenoid_on")
-def solenoid_on():
-    brain.controller.solenoid_controller.solenoid_on()
-    return {}
-
-@app.get("/solenoid_off")
-def solenoid_off():
-    brain.controller.solenoid_controller.solenoid_off()
+@app.post("/solenoid")
+def solenoid(mode: str):
+    if mode == "on":
+        brain.controller.solenoid_controller.solenoid_on()
+    elif mode == "off":
+        brain.controller.solenoid_controller.solenoid_off()
+    else:
+        return {"error": "Invalid mode"}
     return {}
 
 @app.get("/reset")

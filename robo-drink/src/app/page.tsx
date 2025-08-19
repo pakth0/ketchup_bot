@@ -5,6 +5,7 @@ import MenuItemCard, { type MenuItem } from "@/components/MenuItemCard";
 import Cart, { type CartItem } from "@/components/Cart";
 import TipSelector from "@/components/TipSelector";
 import SuccessScreen from "@/components/SuccessScreen";
+import ApiControls from "@/components/ApiControls";
 
 const MENU_ITEMS: MenuItem[] = [
   { id: "latte", name: "Latte", description: "Espresso, steamed milk", priceCents: 495 },
@@ -107,6 +108,13 @@ export default function Home() {
       />
 
       <SuccessScreen isOpen={isSuccessOpen} onClose={handleSuccessClose} />
+      
+      {/* Fixed positioned API controls in bottom right corner - only show on main screen */}
+      {!isTipOpen && !isSuccessOpen && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <ApiControls />
+        </div>
+      )}
     </div>
   );
 }
