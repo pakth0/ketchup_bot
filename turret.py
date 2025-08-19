@@ -19,14 +19,36 @@ class PanTiltTurretController:
         self.cooldown = time.time() - 15 # Initialize cooldown timer
         self.cooldown_lock = threading.Lock()
 
-        try:
-            self.brick = nxt.locator.find()
-            self.pan_motor = self.brick.get_motor(self.pan_motor_port)
-            self.tilt_motor = self.brick.get_motor(self.tilt_motor_port)
-            print("Brick initialized")
-        except Exception as e:
-            print(f"Error initializing brick: {e}")
-            return None
+        # Try to initialize brick with 3 retries
+        max_retries = 3
+        retry_delay = 2  # seconds between retries
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"Attempting to initialize brick (attempt {attempt + 1}/{max_retries})...")
+                self.brick = nxt.locator.find()
+                self.pan_motor = self.brick.get_motor(self.pan_motor_port)
+                self.tilt_motor = self.brick.get_motor(self.tilt_motor_port)
+                print("✅ Brick initialized successfully")
+                break  # Success! Exit the retry loop
+            except Exception as e:
+                print(f"❌ Error initializing brick (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:  # Not the last attempt
+                    print(f"⏳ Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:  # Last attempt failed
+                    print("🚨 CRITICAL ERROR: Failed to initialize brick after 3 attempts")
+                    print("🚨 Please check:")
+                    print("   - NXT brick is connected via USB")
+                    print("   - NXT brick is powered on")
+                    print("   - USB cable is properly connected")
+                    print("   - No other programs are using the NXT")
+                    print("🚨 Exiting program...")
+                    raise Exception(f"Failed to initialize NXT brick after {max_retries} attempts. Last error: {e}")
+                    
+        # Continue with MotCont initialization only if brick was successfully initialized
+        if not hasattr(self, 'brick') or self.brick is None:
+            raise Exception("Brick initialization failed - cannot continue")
         
         self.MotCont = MotCont(self.brick)
         self.MotCont.start()
