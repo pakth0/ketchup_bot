@@ -53,24 +53,7 @@ export default function SuccessScreen({ isOpen, onClose, autoCloseMs = 1600, tip
             <path d="M20 6L9 17l-5-5" />
           </svg>
         </div>
-        <p className="mt-6 text-2xl font-semibold">You're all set!</p>
-        
-        {configuring && (
-          <div className="mt-4 text-center">
-            <div className="text-sm text-gray-600 mb-2">🤖 Configuring robot...</div>
-            {tipAmount === 0 ? (
-              <div className="text-sm font-medium text-red-600">
-                🎯 Face targeting mode activated<br/>
-                <span className="text-xs text-gray-500">No tip = mischief mode 😈</span>
-              </div>
-            ) : (
-              <div className="text-sm font-medium text-green-600">
-                🌭 Hotdog targeting mode activated<br/>
-                <span className="text-xs text-gray-500">Thanks for the tip! 😊</span>
-              </div>
-            )}
-          </div>
-        )}
+        <p className="mt-6 text-2xl font-semibold">You&apos;re all set!</p>
       </div>
     </div>
   );
