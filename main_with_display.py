@@ -257,14 +257,14 @@ def run_display_with_server():
 
     # Start FastAPI server in a separate thread
     port = int(os.environ.get('PORT', 8080))  # Use 8080 instead of 80 to avoid permissions
-    host = "127.0.0.1"
+    host = "0.0.0.0"
     
     print(f"🚀 Starting FastAPI server on {host}:{port}")
     print(f"🌐 URL: http://{host}:{port}")
     print(f"📚 API Docs: http://{host}:{port}/docs")
     
     server_thread = threading.Thread(
-        target=lambda: uvicorn.run(app, host=host, port=port, log_level="info"),
+        target=lambda: uvicorn.run(app, port=port, log_level="info"),
         daemon=True
     )
     server_thread.start()
