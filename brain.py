@@ -25,7 +25,7 @@ class Brain:
             
         self.face_threshold_distance = face_threshold_distance
         self.glizzy_threshold_distance = glizzy_threshold_distance
-        self.cap = cv2.VideoCapture(0) #1920x1080
+        self.cap = cv2.VideoCapture(2) #1920x1080
         self.center_x = 960
         self.center_y = 540
         self.face_tracker = FaceTracker(self.cap)

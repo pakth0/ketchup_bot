@@ -257,7 +257,7 @@ def run_display_with_server():
 
     # Start FastAPI server in a separate thread
     port = int(os.environ.get('PORT', 8080))  # Use 8080 instead of 80 to avoid permissions
-    host = "0.0.0.0"
+    host = "localhost"
     
     print(f"🚀 Starting FastAPI server on {host}:{port}")
     print(f"🌐 URL: http://{host}:{port}")

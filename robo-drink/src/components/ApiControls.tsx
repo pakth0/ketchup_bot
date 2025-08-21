@@ -73,7 +73,7 @@ export default function ApiControls({ className, robotState, robotActions }: Api
                 : "bg-white hover:bg-gray-50 text-gray-700 border-gray-300"
             }`}
           >
-            Face
+            Burger
           </button>
           <button
             onClick={() => setTrackMode("hotdog")}

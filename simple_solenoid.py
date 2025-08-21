@@ -81,7 +81,7 @@ def main():
     ser = connect_to_arduino()
     
     solenoid_on(ser)
-    time.sleep(0.5)
+    time.sleep(10)
     solenoid_off(ser)
 
 if __name__ == "__main__":
